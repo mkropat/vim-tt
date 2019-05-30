@@ -105,23 +105,13 @@ function! tt#play_sound()
     return
   endif
 
-  let l:cmd = s:get_sound_cmd()
-  if len(l:cmd)
-    call add(l:cmd, l:soundfile)
-    call job_start(l:cmd)
+  if executable('afplay')
+    call system('afplay ' . shellescape(l:soundfile) . ' &')
+  elseif executable('aplay')
+    call system('aplay ' . shellescape(l:soundfile) . ' &')
   elseif has('win32') && has ('pythonx')
     pythonx import winsound
     execute 'pythonx' printf('winsound.PlaySound(r''%s'', winsound.SND_ASYNC | winsound.SND_FILENAME)', l:soundfile)
-  endif
-endfunction
-
-function! s:get_sound_cmd()
-  if executable('afplay')
-    return ['afplay']
-  elseif executable('aplay')
-    return ['aplay']
-  else
-    return []
   endif
 endfunction
 
