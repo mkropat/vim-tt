@@ -6,7 +6,7 @@ function! s:init()
   let s:status = ''
   let s:ondone = []
 
-  if ! exists('gg:tt_taskfile')
+  if ! exists('g:tt_taskfile')
     let g:tt_taskfile = '~/tasks'
   endif
 
