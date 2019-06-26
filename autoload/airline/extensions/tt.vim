@@ -22,7 +22,7 @@ endfunction
 function! airline#extensions#tt#get()
   let parts = []
 
-  let remaining = tt#get_remaining_formatted()
+  let remaining = tt#get_remaining_smart_format()
   if remaining !=# ''
     call add(parts, remaining)
   endif

@@ -88,14 +88,19 @@ function! tt#get_remaining()
   return l:difference < 0 ? 0 : l:difference
 endfunction
 
-function! tt#get_remaining_formatted()
+function! tt#get_remaining_full_format()
+  let l:remaining = tt#get_remaining()
+  return s:format_duration_display(l:remaining)
+endfunction
+
+function! tt#get_remaining_smart_format()
   let l:remaining = tt#get_remaining()
   if tt#is_running()
     return s:format_abbrev_duration(l:remaining)
   else
     return l:remaining < 0
       \? ''
-      \: '[' . s:format_duration(l:remaining) . ']'
+      \: s:format_duration_display(l:remaining)
   endif
 endfunction
 
@@ -123,10 +128,15 @@ function! tt#open_tasks()
   call s:switch_to_file(expand(g:tt_taskfile))
 endfunction
 
+function! s:format_duration_display(duration)
+  return '[' . s:format_duration(a:duration) . ']'
+endfunction
+
 function! s:format_duration(duration)
-  let l:hours = a:duration / 60 / 60
-  let l:minutes = a:duration / 60 % 60
-  let l:seconds = a:duration % 60
+  let l:duration = a:duration < 0 ? 0 : a:duration
+  let l:hours = l:duration / 60 / 60
+  let l:minutes = l:duration / 60 % 60
+  let l:seconds = l:duration % 60
   return printf('%02d:%02d:%02d', l:hours, l:minutes, l:seconds)
 endfunction
 
@@ -251,11 +261,13 @@ function! s:use_defaults()
     \  call tt#clear_status()
     \| call tt#clear_timer()
 
-  command! PauseTimer call tt#toggle_timer()
   command! OpenTasks call tt#open_tasks()
+  command! PauseTimer call tt#toggle_timer()
+  command! ShowTimer echomsg tt#get_remaining_full_format() . " " . tt#get_status()
 
   nnoremap <Leader>tb :Break<cr>
   nnoremap <Leader>tp :PauseTimer<cr>
+  nnoremap <Leader>ts :ShowTimer<cr>
   nnoremap <Leader>tt :OpenTasks<cr>
   nnoremap <Leader>tw :Work<cr>
 endfunction
