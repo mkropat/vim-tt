@@ -4,6 +4,8 @@ function! s:init()
   let s:starttime = -1
   let s:remaining = -1
   let s:status = ''
+  let s:task_line = ''
+  let s:task_line_num = 0
   let s:ondone = []
 
   if ! exists('g:tt_taskfile')
@@ -16,6 +18,10 @@ function! s:init()
 
   if ! exists('g:tt_statefile')
     let g:tt_statefile = s:get_vimdir() . '/' . 'tt.state'
+  endif
+
+  if ! exists('g:tt_progressmark')
+    let g:tt_progressmark = '†'
   endif
 
   call s:read_state()
@@ -32,17 +38,29 @@ function! tt#get_status()
 endfunction
 
 function! tt#set_status(status)
-  call s:set_state(s:starttime, s:remaining, a:status, s:ondone)
+  call s:set_state(s:starttime, s:remaining, a:status, s:task_line, s:task_line_num, s:ondone)
 endfunction
 
 function! tt#clear_status()
-  call s:set_state(s:starttime, s:remaining, '', s:ondone)
+  call s:set_state(s:starttime, s:remaining, '', s:task_line, s:task_line_num, s:ondone)
+endfunction
+
+function! tt#get_task()
+  return s:format_task(s:task_line)
+endfunction
+
+function! tt#set_task(line_text, line_num)
+  call s:set_state(s:starttime, s:remaining, s:status, a:line_text, a:line_num, s:ondone)
+endfunction
+
+function! tt#clear_task()
+  call s:set_state(s:starttime, s:remaining, s:status, '', 0, s:ondone)
 endfunction
 
 function! tt#set_timer(duration)
   let l:was_running = tt#is_running() && tt#get_remaining() > 0
   call tt#pause_timer()
-  call s:set_state(s:starttime, s:parse_duration(a:duration), s:status, s:ondone)
+  call s:set_state(s:starttime, s:parse_duration(a:duration), s:status, s:task_line, s:task_line_num, s:ondone)
   if l:was_running
     call tt#start_timer()
   endif
@@ -50,7 +68,7 @@ endfunction
 
 function! tt#start_timer()
   if tt#get_remaining() >= 0
-    call s:set_state(localtime(), s:remaining, s:status, s:ondone)
+    call s:set_state(localtime(), s:remaining, s:status, s:task_line, s:task_line_num, s:ondone)
   endif
 endfunction
 
@@ -59,7 +77,7 @@ function! tt#is_running()
 endfunction
 
 function! tt#pause_timer()
-  call s:set_state(-1, tt#get_remaining(), s:status, s:ondone)
+  call s:set_state(-1, tt#get_remaining(), s:status, s:task_line, s:task_line_num, s:ondone)
 endfunction
 
 function! tt#toggle_timer()
@@ -71,11 +89,11 @@ function! tt#toggle_timer()
 endfunction
 
 function! tt#clear_timer()
-  call s:set_state(-1, -1, s:status, [])
+  call s:set_state(-1, -1, s:status, s:task_line, s:task_line_num, [])
 endfunction
 
 function! tt#when_done(...)
-  call s:set_state(s:starttime, s:remaining, s:status, a:000)
+  call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, a:000)
 endfunction
 
 function! tt#get_remaining()
@@ -126,6 +144,88 @@ function! tt#open_tasks()
   endif
 
   call s:switch_to_file(expand(g:tt_taskfile))
+  if ! exists('b:tt_taskfile_initialized')
+    nnoremap <buffer> <CR> :WorkOnTask<CR>
+    let b:tt_taskfile_initialized = 1
+  endif
+endfunction
+
+function! tt#can_be_task(line_text)
+  return s:translate_to_task_matcher(a:line_text) !=# ''
+endfunction
+
+function! tt#mark_last_task()
+  if s:task_line ==# ''
+    return
+  endif
+
+  if bufnr(expand(g:tt_taskfile)) !=# bufnr('%')
+    throw 'You must call tt#open_tasks() before calling tt#mark_last_task()'
+  endif
+
+  let l:line_num = s:find_matching_line()
+  if l:line_num == 0
+    echohl WarningMsg | echo "Unable to find task: " . s:format_task(s:task_line) | echohl None
+    return
+  endif
+
+  let l:orig_modified = &modified
+  call s:append_progressmark(l:line_num)
+  if ! l:orig_modified
+    write
+  endif
+endfunction
+
+function! s:find_matching_line()
+  let l:target = s:translate_to_task_matcher(s:task_line)
+
+  let l:top = 1
+  if s:task_line_num > 0
+    let l:top = s:task_line_num
+  endif
+  let l:bottom = l:top + 1
+
+  while l:top > 0 || l:bottom <= line('$')
+    if l:top > 0
+      if s:translate_to_task_matcher(getline(l:top)) ==? l:target
+        return l:top
+      endif
+      let l:top -= 1
+    endif
+
+    if l:bottom <= line('$')
+      if s:translate_to_task_matcher(getline(l:bottom)) ==? l:target
+        return l:bottom
+      endif
+      let l:bottom += 1
+    endif
+  endwhile
+
+  return 0
+endfunction
+
+function! s:format_task(line)
+  let l:result = a:line
+  let l:result = substitute(l:result, '^\s*\%(\W\+\s\+\)\?\(.\{-}\)\%(\s\+\W\+\)\?\W*$', '\1', '')
+  let l:result = substitute(l:result, '\s\+', ' ', 'g')
+  return l:result
+endfunction
+
+function! s:translate_to_task_matcher(line)
+  return s:trim(substitute(a:line, '\W\+', ' ', 'g'))
+endfunction
+
+function! s:append_progressmark(line_num)
+  let l:line = getline(a:line_num)
+  if strcharpart(l:line, strchars(l:line) - 1, 1) ==# g:tt_progressmark
+    call setline(a:line_num, l:line . g:tt_progressmark)
+  else
+    call setline(a:line_num, l:line . " " . g:tt_progressmark)
+  endif
+endfunction
+
+function! s:trim(str)
+  return substitute(a:str, '^\s*\(.\{-}\)\s*$', '\1', '')
 endfunction
 
 function! s:format_duration_display(duration)
@@ -186,22 +286,26 @@ endfunction
 function! s:read_state()
   if filereadable(expand(g:tt_statefile))
     let l:state = readfile(expand(g:tt_statefile))
-    if l:state[0] ==# 'tt.v1' && len(l:state) >= 4
+    if l:state[0] ==# 'tt.v2' && len(l:state) >= 4
       let s:starttime = l:state[1]
       let s:remaining = l:state[2]
       let s:status = l:state[3]
-      let s:ondone = l:state[4:]
+      let s:task_line = l:state[4]
+      let s:task_line_num = l:state[5]
+      let s:ondone = l:state[6:]
     endif
   endif
 endfunction
 
-function! s:set_state(starttime, remaining, status, ondone)
+function! s:set_state(starttime, remaining, status, task_line, task_line_num, ondone)
   let s:starttime = a:starttime
   let s:remaining = a:remaining
   let s:status = a:status
+  let s:task_line = a:task_line
+  let s:task_line_num = a:task_line_num
   let s:ondone = a:ondone
 
-  let l:state = ['tt.v1', s:starttime, s:remaining, s:status]
+  let l:state = ['tt.v2', s:starttime, s:remaining, s:status, s:task_line, s:task_line_num]
   call extend(l:state, s:ondone)
   call writefile(l:state, expand(g:tt_statefile))
 endfunction
@@ -227,7 +331,7 @@ endfunction
 function! s:tick(timer)
   if len(s:ondone) && tt#is_running() && tt#get_remaining() == 0
     let l:ondone = s:ondone
-    call s:set_state(s:starttime, s:remaining, s:status, [])
+    call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, [])
     execute join(l:ondone)
   endif
 
@@ -239,6 +343,7 @@ function! s:use_defaults()
     \  call tt#set_timer(25)
     \| call tt#start_timer()
     \| call tt#set_status('|working|')
+    \| call tt#clear_task()
     \| call tt#when_done('AfterWork')
 
   command! AfterWork
@@ -246,10 +351,25 @@ function! s:use_defaults()
     \| call tt#open_tasks()
     \| Break
 
+  command! WorkOnTask
+    \  if tt#can_be_task(getline('.'))
+    \|   execute 'Work'
+    \|   call tt#set_task(getline('.'), line('.'))
+    \|   echomsg "Current task: " . tt#get_task()
+    \|   call tt#when_done('AfterWorkOnTask')
+    \| endif
+
+  command! AfterWorkOnTask
+    \  call tt#play_sound()
+    \| call tt#open_tasks()
+    \| call tt#mark_last_task()
+    \| Break
+
   command! Break
     \  call tt#set_timer(5)
     \| call tt#start_timer()
     \| call tt#set_status('|break|')
+    \| call tt#clear_task()
     \| call tt#when_done('AfterBreak')
 
   command! AfterBreak
@@ -259,11 +379,12 @@ function! s:use_defaults()
 
   command! ClearTimer
     \  call tt#clear_status()
+    \| call tt#clear_task()
     \| call tt#clear_timer()
 
   command! OpenTasks call tt#open_tasks()
   command! PauseTimer call tt#toggle_timer()
-  command! ShowTimer echomsg tt#get_remaining_full_format() . " " . tt#get_status()
+  command! ShowTimer echomsg tt#get_remaining_full_format() . " " . tt#get_status() . " " . tt#get_task()
 
   nnoremap <Leader>tb :Break<cr>
   nnoremap <Leader>tp :PauseTimer<cr>
