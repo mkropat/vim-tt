@@ -325,7 +325,7 @@ function! s:switch_to_file(filename)
     return
   endif
 
-  execute 'vsplit' a:filename
+  execute 'botright' 'vsplit' a:filename
 endfunction
 
 function! s:tick(timer)
