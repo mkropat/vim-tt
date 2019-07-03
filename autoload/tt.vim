@@ -325,7 +325,18 @@ function! s:switch_to_file(filename)
     return
   endif
 
-  execute 'botright' 'vsplit' a:filename
+  if s:is_new_buffer()
+    execute 'edit' a:filename
+  else
+    execute 'botright' 'vsplit' a:filename
+  endif
+endfunction
+
+function! s:is_new_buffer()
+  let l:is_unnamed = bufname('%') == ''
+  let l:is_empty = line('$') == 1 && getline(1) == ''
+  let l:is_normal = &buftype == ''
+  return l:is_unnamed && l:is_empty && l:is_normal
 endfunction
 
 function! s:tick(timer)
