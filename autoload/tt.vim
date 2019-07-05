@@ -167,11 +167,22 @@ function! tt#mark_last_task()
   let l:line_num = s:find_matching_line()
   if l:line_num == 0
     echohl WarningMsg | echo "Unable to find task: " . s:format_task(s:task_line) | echohl None
-    return
+  else
+    call s:mark_task(l:line_num)
+  endif
+endfunction
+
+function! tt#mark_task()
+  if bufnr(expand(g:tt_taskfile)) !=# bufnr('%')
+    throw 'You must call tt#open_tasks() before calling tt#mark_last_task()'
   endif
 
+  call s:mark_task(line('.'))
+endfunction
+
+function! s:mark_task(line_num)
   let l:orig_modified = &modified
-  call s:append_progressmark(l:line_num)
+  call s:append_progressmark(a:line_num)
   if ! l:orig_modified
     write
   endif
@@ -390,11 +401,13 @@ function! s:use_defaults()
     \| call tt#clear_task()
     \| call tt#clear_timer()
 
+  command! MarkTask call tt#mark_task()
   command! OpenTasks call tt#open_tasks()
   command! PauseTimer call tt#toggle_timer()
   command! ShowTimer echomsg tt#get_remaining_full_format() . " " . tt#get_status() . " " . tt#get_task()
 
   nnoremap <Leader>tb :Break<cr>
+  nnoremap <Leader>tm :MarkTask<cr>
   nnoremap <Leader>tp :PauseTimer<cr>
   nnoremap <Leader>ts :ShowTimer<cr>
   nnoremap <Leader>tt :OpenTasks<cr>
