@@ -49,8 +49,9 @@ function! tt#get_task()
   return s:format_task(s:task_line)
 endfunction
 
-function! tt#set_task(line_text, line_num)
-  call s:set_state(s:starttime, s:remaining, s:status, a:line_text, a:line_num, s:ondone)
+function! tt#set_task(line_text, ...)
+  let l:line_num = a:0 == 0 ? 0 : a:1
+  call s:set_state(s:starttime, s:remaining, s:status, a:line_text, l:line_num, s:ondone)
 endfunction
 
 function! tt#clear_task()
@@ -155,7 +156,7 @@ function! tt#can_be_task(line_text)
 endfunction
 
 function! tt#mark_last_task()
-  if s:task_line ==# ''
+  if s:task_line ==# '' || s:task_line_num == 0
     return
   endif
 
@@ -179,10 +180,7 @@ endfunction
 function! s:find_matching_line()
   let l:target = s:translate_to_task_matcher(s:task_line)
 
-  let l:top = 1
-  if s:task_line_num > 0
-    let l:top = s:task_line_num
-  endif
+  let l:top = s:task_line_num
   let l:bottom = l:top + 1
 
   while l:top > 0 || l:bottom <= line('$')
@@ -354,7 +352,6 @@ function! s:use_defaults()
     \  call tt#set_timer(25)
     \| call tt#start_timer()
     \| call tt#set_status('|working|')
-    \| call tt#clear_task()
     \| call tt#when_done('AfterWork')
 
   command! AfterWork
@@ -364,8 +361,8 @@ function! s:use_defaults()
 
   command! WorkOnTask
     \  if tt#can_be_task(getline('.'))
-    \|   execute 'Work'
     \|   call tt#set_task(getline('.'), line('.'))
+    \|   execute 'Work'
     \|   echomsg "Current task: " . tt#get_task()
     \|   call tt#when_done('AfterWorkOnTask')
     \| endif
