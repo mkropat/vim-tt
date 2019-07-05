@@ -168,21 +168,27 @@ function! tt#mark_last_task()
   if l:line_num == 0
     echohl WarningMsg | echo "Unable to find task: " . s:format_task(s:task_line) | echohl None
   else
-    call s:mark_task(l:line_num)
+    call s:mark_task(l:line_num, l:line_num)
   endif
 endfunction
 
-function! tt#mark_task()
+function! tt#mark_task() range
   if bufnr(expand(g:tt_taskfile)) !=# bufnr('%')
     throw 'You must call tt#open_tasks() before calling tt#mark_last_task()'
   endif
 
-  call s:mark_task(line('.'))
+  call s:mark_task(a:firstline, a:lastline)
 endfunction
 
-function! s:mark_task(line_num)
+function! s:mark_task(first, last)
   let l:orig_modified = &modified
-  call s:append_progressmark(a:line_num)
+
+  for l:line_num in range(a:first, a:last)
+    if tt#can_be_task(getline(l:line_num))
+      call s:append_progressmark(l:line_num)
+    endif
+  endfor
+
   if ! l:orig_modified
     write
   endif
@@ -401,13 +407,14 @@ function! s:use_defaults()
     \| call tt#clear_task()
     \| call tt#clear_timer()
 
-  command! MarkTask call tt#mark_task()
+  command! -range MarkTask <line1>,<line2>call tt#mark_task()
   command! OpenTasks call tt#open_tasks()
   command! PauseTimer call tt#toggle_timer()
   command! ShowTimer echomsg tt#get_remaining_full_format() . " " . tt#get_status() . " " . tt#get_task()
 
   nnoremap <Leader>tb :Break<cr>
   nnoremap <Leader>tm :MarkTask<cr>
+  xnoremap <Leader>tm :MarkTask<cr>
   nnoremap <Leader>tp :PauseTimer<cr>
   nnoremap <Leader>ts :ShowTimer<cr>
   nnoremap <Leader>tt :OpenTasks<cr>
