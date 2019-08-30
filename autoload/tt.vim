@@ -419,13 +419,13 @@ function! s:use_defaults()
 
   command! -range MarkTask <line1>,<line2>call tt#mark_task()
   command! OpenTasks call tt#open_tasks() <Bar> call tt#focus_tasks()
-  command! PauseTimer call tt#toggle_timer()
   command! ShowTimer echomsg tt#get_remaining_full_format() . " " . tt#get_status() . " " . tt#get_task()
+  command! ToggleTimer call tt#toggle_timer()
 
   nnoremap <Leader>tb :Break<cr>
   nnoremap <Leader>tm :MarkTask<cr>
   xnoremap <Leader>tm :MarkTask<cr>
-  nnoremap <Leader>tp :PauseTimer<cr>
+  nnoremap <Leader>tp :ToggleTimer<cr>
   nnoremap <Leader>ts :ShowTimer<cr>
   nnoremap <Leader>tt :OpenTasks<cr>
   nnoremap <Leader>tw :Work<cr>
