@@ -419,6 +419,7 @@ function! s:use_defaults()
 
   command! -range MarkTask <line1>,<line2>call tt#mark_task()
   command! OpenTasks call tt#open_tasks() <Bar> call tt#focus_tasks()
+  command! -nargs=1 SetTimer call tt#set_timer(<f-args>)
   command! ShowTimer echomsg tt#get_remaining_full_format() . " " . tt#get_status() . " " . tt#get_task()
   command! ToggleTimer call tt#toggle_timer()
 
