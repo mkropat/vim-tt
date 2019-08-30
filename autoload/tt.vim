@@ -144,11 +144,28 @@ function! tt#open_tasks()
     throw 'You must set g:tt_taskfile before calling tt#open_tasks()'
   endif
 
-  call s:switch_to_file(expand(g:tt_taskfile))
+  let l:taskfile = expand(g:tt_taskfile)
+  if bufwinid(l:taskfile) >= 0
+    return
+  endif
+
+  let l:original_win = bufwinid('%')
+  call s:open_file(l:taskfile)
   if ! exists('b:tt_taskfile_initialized')
     nnoremap <buffer> <CR> :WorkOnTask<CR>
     let b:tt_taskfile_initialized = 1
   endif
+  call win_gotoid(l:original_win)
+endfunction
+
+function! tt#focus_tasks()
+  let l:win_id = bufwinid(expand(g:tt_taskfile))
+
+  if l:win_id < 0
+    throw 'You must call tt#open_tasks() before calling tt#focus_tasks()'
+  endif
+
+  call win_gotoid(l:win_id)
 endfunction
 
 function! tt#can_be_task(line_text)
@@ -160,9 +177,14 @@ function! tt#mark_last_task()
     return
   endif
 
-  if bufnr(expand(g:tt_taskfile)) !=# bufnr('%')
+  let l:taskfile = expand(g:tt_taskfile)
+  let l:task_win = bufwinid(l:taskfile)
+  if l:task_win < 0
     throw 'You must call tt#open_tasks() before calling tt#mark_last_task()'
   endif
+
+  let l:original_win = bufwinid('%')
+  call win_gotoid(l:task_win)
 
   let l:line_num = s:find_matching_line()
   if l:line_num == 0
@@ -170,11 +192,13 @@ function! tt#mark_last_task()
   else
     call s:mark_task(l:line_num, l:line_num)
   endif
+
+  call win_gotoid(l:original_win)
 endfunction
 
 function! tt#mark_task() range
   if bufnr(expand(g:tt_taskfile)) !=# bufnr('%')
-    throw 'You must call tt#open_tasks() before calling tt#mark_last_task()'
+    throw 'You must call tt#open_tasks() before calling tt#mark_task()'
   endif
 
   call s:mark_task(a:firstline, a:lastline)
@@ -325,21 +349,7 @@ function! s:set_state(starttime, remaining, status, task_line, task_line_num, on
   call writefile(l:state, expand(g:tt_statefile))
 endfunction
 
-function! s:switch_to_file(filename)
-  let l:buf_id = bufnr(a:filename)
-
-  let l:win_id = bufwinid(l:buf_id) " look in current tab
-  if l:win_id >= 0
-    call win_gotoid(l:win_id)
-    return
-  endif
-
-  let l:win_ids = win_findbuf(l:buf_id) " look across all tabs
-  if len(l:win_ids)
-    call win_gotoid(l:win_ids[0])
-    return
-  endif
-
+function! s:open_file(filename)
   if s:is_new_buffer()
     execute 'edit' a:filename
   else
@@ -408,7 +418,7 @@ function! s:use_defaults()
     \| call tt#clear_timer()
 
   command! -range MarkTask <line1>,<line2>call tt#mark_task()
-  command! OpenTasks call tt#open_tasks()
+  command! OpenTasks call tt#open_tasks() <Bar> call tt#focus_tasks()
   command! PauseTimer call tt#toggle_timer()
   command! ShowTimer echomsg tt#get_remaining_full_format() . " " . tt#get_status() . " " . tt#get_task()
 
