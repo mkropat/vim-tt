@@ -27,7 +27,7 @@ function! airline#extensions#tt#get()
     call add(parts, remaining)
   endif
 
-  let status = tt#get_status()
+  let status = tt#get_status_formatted()
   if status !=# ''
     call add(parts, status)
   endif

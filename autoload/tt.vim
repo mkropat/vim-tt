@@ -37,6 +37,13 @@ function! tt#get_status()
   return s:status
 endfunction
 
+function! tt#get_status_formatted()
+  if s:status ==# ''
+    return s:status
+  endif
+  return '|' . s:status . '|'
+endfunction
+
 function! tt#set_status(status)
   call s:set_state(s:starttime, s:remaining, a:status, s:task_line, s:task_line_num, s:ondone)
 endfunction
@@ -378,7 +385,7 @@ function! s:use_defaults()
   command! Work
     \  call tt#set_timer(25)
     \| call tt#start_timer()
-    \| call tt#set_status('|working|')
+    \| call tt#set_status('working')
     \| call tt#when_done('AfterWork')
 
   command! AfterWork
@@ -403,13 +410,13 @@ function! s:use_defaults()
   command! Break
     \  call tt#set_timer(5)
     \| call tt#start_timer()
-    \| call tt#set_status('|break|')
+    \| call tt#set_status('break')
     \| call tt#clear_task()
     \| call tt#when_done('AfterBreak')
 
   command! AfterBreak
     \  call tt#play_sound()
-    \| call tt#set_status('|ready|')
+    \| call tt#set_status('ready')
     \| call tt#clear_timer()
 
   command! ClearTimer
@@ -420,7 +427,7 @@ function! s:use_defaults()
   command! -range MarkTask <line1>,<line2>call tt#mark_task()
   command! OpenTasks call tt#open_tasks() <Bar> call tt#focus_tasks()
   command! -nargs=1 SetTimer call tt#set_timer(<f-args>)
-  command! ShowTimer echomsg tt#get_remaining_full_format() . " " . tt#get_status() . " " . tt#get_task()
+  command! ShowTimer echomsg tt#get_remaining_full_format() . " " . tt#get_status_formatted() . " " . tt#get_task()
   command! ToggleTimer call tt#toggle_timer()
 
   nnoremap <Leader>tb :Break<cr>
