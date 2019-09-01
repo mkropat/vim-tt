@@ -6,7 +6,7 @@ function! s:init()
   let s:status = ''
   let s:task_line = ''
   let s:task_line_num = 0
-  let s:ondone = []
+  let s:ondone = ''
 
   if ! exists('g:tt_taskfile')
     let g:tt_taskfile = '~/tasks'
@@ -97,11 +97,11 @@ function! tt#toggle_timer()
 endfunction
 
 function! tt#clear_timer()
-  call s:set_state(-1, -1, s:status, s:task_line, s:task_line_num, [])
+  call s:set_state(-1, -1, s:status, s:task_line, s:task_line_num, '')
 endfunction
 
-function! tt#when_done(...)
-  call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, a:000)
+function! tt#when_done(ondone)
+  call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, a:ondone)
 endfunction
 
 function! tt#get_remaining()
@@ -332,13 +332,13 @@ endfunction
 function! s:read_state()
   if filereadable(expand(g:tt_statefile))
     let l:state = readfile(expand(g:tt_statefile))
-    if l:state[0] ==# 'tt.v2' && len(l:state) >= 4
+    if l:state[0] ==# 'tt.v3' && len(l:state) >= 4
       let s:starttime = l:state[1]
       let s:remaining = l:state[2]
       let s:status = l:state[3]
       let s:task_line = l:state[4]
       let s:task_line_num = l:state[5]
-      let s:ondone = l:state[6:]
+      let s:ondone = l:state[6]
     endif
   endif
 endfunction
@@ -351,8 +351,7 @@ function! s:set_state(starttime, remaining, status, task_line, task_line_num, on
   let s:task_line_num = a:task_line_num
   let s:ondone = a:ondone
 
-  let l:state = ['tt.v2', s:starttime, s:remaining, s:status, s:task_line, s:task_line_num]
-  call extend(l:state, s:ondone)
+  let l:state = ['tt.v3', s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, s:ondone]
   call writefile(l:state, expand(g:tt_statefile))
 endfunction
 
@@ -372,10 +371,10 @@ function! s:is_new_buffer()
 endfunction
 
 function! s:tick(timer)
-  if len(s:ondone) && tt#is_running() && tt#get_remaining() == 0
+  if s:ondone !=# '' && tt#is_running() && tt#get_remaining() == 0
     let l:ondone = s:ondone
-    call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, [])
-    execute join(l:ondone)
+    call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, '')
+    execute l:ondone
   endif
 
   doautocmd <nomodeline> User TtTick
