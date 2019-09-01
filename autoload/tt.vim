@@ -7,6 +7,7 @@ function! s:init()
   let s:task_line = ''
   let s:task_line_num = 0
   let s:ondone = ''
+  let s:user_state = {}
 
   if ! exists('g:tt_taskfile')
     let g:tt_taskfile = '~/tasks'
@@ -45,11 +46,11 @@ function! tt#get_status_formatted()
 endfunction
 
 function! tt#set_status(status)
-  call s:set_state(s:starttime, s:remaining, a:status, s:task_line, s:task_line_num, s:ondone)
+  call s:set_state(s:starttime, s:remaining, a:status, s:task_line, s:task_line_num, s:ondone, s:user_state)
 endfunction
 
 function! tt#clear_status()
-  call s:set_state(s:starttime, s:remaining, '', s:task_line, s:task_line_num, s:ondone)
+  call s:set_state(s:starttime, s:remaining, '', s:task_line, s:task_line_num, s:ondone, s:user_state)
 endfunction
 
 function! tt#get_task()
@@ -58,17 +59,17 @@ endfunction
 
 function! tt#set_task(line_text, ...)
   let l:line_num = a:0 == 0 ? 0 : a:1
-  call s:set_state(s:starttime, s:remaining, s:status, a:line_text, l:line_num, s:ondone)
+  call s:set_state(s:starttime, s:remaining, s:status, a:line_text, l:line_num, s:ondone, s:user_state)
 endfunction
 
 function! tt#clear_task()
-  call s:set_state(s:starttime, s:remaining, s:status, '', 0, s:ondone)
+  call s:set_state(s:starttime, s:remaining, s:status, '', 0, s:ondone, s:user_state)
 endfunction
 
 function! tt#set_timer(duration)
   let l:was_running = tt#is_running() && tt#get_remaining() > 0
   call tt#pause_timer()
-  call s:set_state(s:starttime, s:parse_duration(a:duration), s:status, s:task_line, s:task_line_num, s:ondone)
+  call s:set_state(s:starttime, s:parse_duration(a:duration), s:status, s:task_line, s:task_line_num, s:ondone, s:user_state)
   if l:was_running
     call tt#start_timer()
   endif
@@ -76,7 +77,7 @@ endfunction
 
 function! tt#start_timer()
   if tt#get_remaining() >= 0
-    call s:set_state(localtime(), s:remaining, s:status, s:task_line, s:task_line_num, s:ondone)
+    call s:set_state(localtime(), s:remaining, s:status, s:task_line, s:task_line_num, s:ondone, s:user_state)
   endif
 endfunction
 
@@ -85,7 +86,7 @@ function! tt#is_running()
 endfunction
 
 function! tt#pause_timer()
-  call s:set_state(-1, tt#get_remaining(), s:status, s:task_line, s:task_line_num, s:ondone)
+  call s:set_state(-1, tt#get_remaining(), s:status, s:task_line, s:task_line_num, s:ondone, s:user_state)
 endfunction
 
 function! tt#toggle_timer()
@@ -97,11 +98,11 @@ function! tt#toggle_timer()
 endfunction
 
 function! tt#clear_timer()
-  call s:set_state(-1, -1, s:status, s:task_line, s:task_line_num, '')
+  call s:set_state(-1, -1, s:status, s:task_line, s:task_line_num, '', s:user_state)
 endfunction
 
 function! tt#when_done(ondone)
-  call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, a:ondone)
+  call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, a:ondone, s:user_state)
 endfunction
 
 function! tt#get_remaining()
@@ -128,6 +129,18 @@ function! tt#get_remaining_smart_format()
       \? ''
       \: s:format_duration_display(l:remaining)
   endif
+endfunction
+
+function! tt#get_state(key, default)
+  return has_key(s:user_state, a:key)
+    \? s:user_state[a:key]
+    \: a:default
+endfunction
+
+function! tt#set_state(key, value)
+  let l:updated_state = copy(s:user_state)
+  let l:updated_state[a:key] = a:value
+  call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, s:ondone, l:updated_state)
 endfunction
 
 function! tt#play_sound()
@@ -339,19 +352,21 @@ function! s:read_state()
       let s:task_line = l:state[4]
       let s:task_line_num = l:state[5]
       let s:ondone = l:state[6]
+      let s:user_state = eval(l:state[7])
     endif
   endif
 endfunction
 
-function! s:set_state(starttime, remaining, status, task_line, task_line_num, ondone)
+function! s:set_state(starttime, remaining, status, task_line, task_line_num, ondone, user_state)
   let s:starttime = a:starttime
   let s:remaining = a:remaining
   let s:status = a:status
   let s:task_line = a:task_line
   let s:task_line_num = a:task_line_num
   let s:ondone = a:ondone
+  let s:user_state = a:user_state
 
-  let l:state = ['tt.v3', s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, s:ondone]
+  let l:state = ['tt.v3', s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, s:ondone, string(s:user_state)]
   call writefile(l:state, expand(g:tt_statefile))
 endfunction
 
@@ -373,7 +388,7 @@ endfunction
 function! s:tick(timer)
   if s:ondone !=# '' && tt#is_running() && tt#get_remaining() == 0
     let l:ondone = s:ondone
-    call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, '')
+    call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, '', s:user_state)
     execute l:ondone
   endif
 
@@ -406,12 +421,22 @@ function! s:use_defaults()
     \| call tt#mark_last_task()
     \| Break
 
-  command! Break
-    \  call tt#set_timer(5)
-    \| call tt#start_timer()
-    \| call tt#set_status('break')
-    \| call tt#clear_task()
-    \| call tt#when_done('AfterBreak')
+  command! Break call Break()
+  function! Break()
+    let l:count = tt#get_state('break-count', 0)
+    if l:count >= 3
+      call tt#set_timer(15)
+      call tt#set_status('long break')
+      call tt#set_state('break-count', 0)
+    else
+      call tt#set_timer(5)
+      call tt#set_status('break')
+      call tt#set_state('break-count', l:count + 1)
+    endif
+    call tt#start_timer()
+    call tt#clear_task()
+    call tt#when_done('AfterBreak')
+  endfunction
 
   command! AfterBreak
     \  call tt#play_sound()
