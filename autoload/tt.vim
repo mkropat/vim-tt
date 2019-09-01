@@ -1,12 +1,14 @@
 let s:plugin_dir = expand('<sfile>:p:h:h')
 
 function! s:init()
-  let s:starttime = -1
-  let s:remaining = -1
-  let s:status = ''
-  let s:task_line = ''
-  let s:task_line_num = 0
-  let s:ondone = ''
+  let s:state = {
+    \'starttime': -1,
+    \'remaining': -1,
+    \'status': '',
+    \'task_line': '',
+    \'task_line_num': 0,
+    \'ondone': ''
+  \}
   let s:user_state = {}
 
   if ! exists('g:tt_taskfile')
@@ -35,41 +37,41 @@ function! s:init()
 endfunction
 
 function! tt#get_status()
-  return s:status
+  return s:state.status
 endfunction
 
 function! tt#get_status_formatted()
-  if s:status ==# ''
-    return s:status
+  if s:state.status ==# ''
+    return s:state.status
   endif
-  return '|' . s:status . '|'
+  return '|' . s:state.status . '|'
 endfunction
 
 function! tt#set_status(status)
-  call s:set_state(s:starttime, s:remaining, a:status, s:task_line, s:task_line_num, s:ondone, s:user_state)
+  call s:set_state({ 'status': a:status }, {})
 endfunction
 
 function! tt#clear_status()
-  call s:set_state(s:starttime, s:remaining, '', s:task_line, s:task_line_num, s:ondone, s:user_state)
+  call s:set_state({ 'status': '' }, {})
 endfunction
 
 function! tt#get_task()
-  return s:format_task(s:task_line)
+  return s:format_task(s:state.task_line)
 endfunction
 
 function! tt#set_task(line_text, ...)
   let l:line_num = a:0 == 0 ? 0 : a:1
-  call s:set_state(s:starttime, s:remaining, s:status, a:line_text, l:line_num, s:ondone, s:user_state)
+  call s:set_state({ 'task_line': a:line_text, 'task_line_num': l:line_num }, {})
 endfunction
 
 function! tt#clear_task()
-  call s:set_state(s:starttime, s:remaining, s:status, '', 0, s:ondone, s:user_state)
+  call s:set_state({ 'task_line': '' }, {})
 endfunction
 
 function! tt#set_timer(duration)
   let l:was_running = tt#is_running() && tt#get_remaining() > 0
   call tt#pause_timer()
-  call s:set_state(s:starttime, s:parse_duration(a:duration), s:status, s:task_line, s:task_line_num, s:ondone, s:user_state)
+  call s:set_state({ 'remaining': s:parse_duration(a:duration) }, {})
   if l:was_running
     call tt#start_timer()
   endif
@@ -77,16 +79,16 @@ endfunction
 
 function! tt#start_timer()
   if tt#get_remaining() >= 0
-    call s:set_state(localtime(), s:remaining, s:status, s:task_line, s:task_line_num, s:ondone, s:user_state)
+    call s:set_state({ 'starttime': localtime() }, {})
   endif
 endfunction
 
 function! tt#is_running()
-  return s:starttime >= 0
+  return s:state.starttime >= 0
 endfunction
 
 function! tt#pause_timer()
-  call s:set_state(-1, tt#get_remaining(), s:status, s:task_line, s:task_line_num, s:ondone, s:user_state)
+  call s:set_state({ 'starttime': -1, 'remaining': tt#get_remaining() }, {})
 endfunction
 
 function! tt#toggle_timer()
@@ -98,20 +100,20 @@ function! tt#toggle_timer()
 endfunction
 
 function! tt#clear_timer()
-  call s:set_state(-1, -1, s:status, s:task_line, s:task_line_num, '', s:user_state)
+  call s:set_state({ 'starttime': -1, 'remaining': -1, 'ondone': '' }, {})
 endfunction
 
 function! tt#when_done(ondone)
-  call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, a:ondone, s:user_state)
+  call s:set_state({ 'ondone': a:ondone }, {})
 endfunction
 
 function! tt#get_remaining()
   if ! tt#is_running()
-    return s:remaining
+    return s:state.remaining
   endif
 
-  let l:elapsed = localtime() - s:starttime
-  let l:difference = s:remaining - l:elapsed
+  let l:elapsed = localtime() - s:state.starttime
+  let l:difference = s:state.remaining - l:elapsed
   return l:difference < 0 ? 0 : l:difference
 endfunction
 
@@ -138,9 +140,9 @@ function! tt#get_state(key, default)
 endfunction
 
 function! tt#set_state(key, value)
-  let l:updated_state = copy(s:user_state)
-  let l:updated_state[a:key] = a:value
-  call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, s:ondone, l:updated_state)
+  let l:user_state = {}
+  let l:user_state[a:key] = a:value
+  call s:set_state({}, l:user_state)
 endfunction
 
 function! tt#play_sound()
@@ -193,7 +195,7 @@ function! tt#can_be_task(line_text)
 endfunction
 
 function! tt#mark_last_task()
-  if s:task_line ==# '' || s:task_line_num == 0
+  if s:state.task_line ==# '' || s:state.task_line_num == 0
     return
   endif
 
@@ -208,7 +210,7 @@ function! tt#mark_last_task()
 
   let l:line_num = s:find_matching_line()
   if l:line_num == 0
-    echohl WarningMsg | echo "Unable to find task: " . s:format_task(s:task_line) | echohl None
+    echohl WarningMsg | echo "Unable to find task: " . s:format_task(s:state.task_line) | echohl None
   else
     call s:mark_task(l:line_num, l:line_num)
   endif
@@ -239,9 +241,9 @@ function! s:mark_task(first, last)
 endfunction
 
 function! s:find_matching_line()
-  let l:target = s:translate_to_task_matcher(s:task_line)
+  let l:target = s:translate_to_task_matcher(s:state.task_line)
 
-  let l:top = s:task_line_num
+  let l:top = s:state.task_line_num
   let l:bottom = l:top + 1
 
   while l:top > 0 || l:bottom <= line('$')
@@ -345,28 +347,39 @@ endfunction
 function! s:read_state()
   if filereadable(expand(g:tt_statefile))
     let l:state = readfile(expand(g:tt_statefile))
-    if l:state[0] ==# 'tt.v3' && len(l:state) >= 4
-      let s:starttime = l:state[1]
-      let s:remaining = l:state[2]
-      let s:status = l:state[3]
-      let s:task_line = l:state[4]
-      let s:task_line_num = l:state[5]
-      let s:ondone = l:state[6]
+    if l:state[0] ==# 'tt.v3' && len(l:state) == 8
+      let s:state = {
+        \'starttime': l:state[1],
+        \'remaining': l:state[2],
+        \'status': l:state[3],
+        \'task_line': l:state[4],
+        \'task_line_num': l:state[5],
+        \'ondone': l:state[6],
+      \}
       let s:user_state = eval(l:state[7])
     endif
   endif
 endfunction
 
-function! s:set_state(starttime, remaining, status, task_line, task_line_num, ondone, user_state)
-  let s:starttime = a:starttime
-  let s:remaining = a:remaining
-  let s:status = a:status
-  let s:task_line = a:task_line
-  let s:task_line_num = a:task_line_num
-  let s:ondone = a:ondone
-  let s:user_state = a:user_state
+function! s:set_state(script_state, user_state)
+  for l:key in keys(a:script_state)
+    let s:state[l:key] = a:script_state[l:key]
+  endfor
 
-  let l:state = ['tt.v3', s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, s:ondone, string(s:user_state)]
+  for l:key in keys(a:user_state)
+    let s:user_state[l:key] = a:user_state[l:key]
+  endfor
+
+  let l:state = [
+    \'tt.v3',
+    \s:state.starttime,
+    \s:state.remaining,
+    \s:state.status,
+    \s:state.task_line,
+    \s:state.task_line_num,
+    \s:state.ondone,
+    \string(s:user_state),
+  \]
   call writefile(l:state, expand(g:tt_statefile))
 endfunction
 
@@ -386,9 +399,9 @@ function! s:is_new_buffer()
 endfunction
 
 function! s:tick(timer)
-  if s:ondone !=# '' && tt#is_running() && tt#get_remaining() == 0
-    let l:ondone = s:ondone
-    call s:set_state(s:starttime, s:remaining, s:status, s:task_line, s:task_line_num, '', s:user_state)
+  if s:state.ondone !=# '' && tt#is_running() && tt#get_remaining() == 0
+    let l:ondone = s:state.ondone
+    call s:set_state({ 'ondone': '' }, {})
     execute l:ondone
   endif
 
