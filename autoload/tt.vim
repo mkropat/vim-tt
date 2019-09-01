@@ -347,16 +347,9 @@ endfunction
 function! s:read_state()
   if filereadable(expand(g:tt_statefile))
     let l:state = readfile(expand(g:tt_statefile))
-    if l:state[0] ==# 'tt.v3' && len(l:state) == 8
-      let s:state = {
-        \'starttime': l:state[1],
-        \'remaining': l:state[2],
-        \'status': l:state[3],
-        \'task_line': l:state[4],
-        \'task_line_num': l:state[5],
-        \'ondone': l:state[6],
-      \}
-      let s:user_state = eval(l:state[7])
+    if l:state[0] ==# 'tt.v4' && len(l:state) == 3
+      let s:state = eval(l:state[1])
+      let s:user_state = eval(l:state[2])
     endif
   endif
 endfunction
@@ -370,16 +363,7 @@ function! s:set_state(script_state, user_state)
     let s:user_state[l:key] = a:user_state[l:key]
   endfor
 
-  let l:state = [
-    \'tt.v3',
-    \s:state.starttime,
-    \s:state.remaining,
-    \s:state.status,
-    \s:state.task_line,
-    \s:state.task_line_num,
-    \s:state.ondone,
-    \string(s:user_state),
-  \]
+  let l:state = ['tt.v4', string(s:state), string(s:user_state)]
   call writefile(l:state, expand(g:tt_statefile))
 endfunction
 
