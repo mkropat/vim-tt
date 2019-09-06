@@ -2,6 +2,17 @@
 
 Task timer for Vim. Exposes the building blocks so you can implement your own task tracking method, whether that's Pomodoro or something of your own creation.
 
+![screenshot](images/screenshot.png)
+
+Features at a glance:
+
+- Adds a timer to the status line (requires [vim-airline][vim-airline])
+- Audible bell support
+- Timer state persists even if you re-start Vim
+- Integrates with your existing task list
+- Can auto-append a progress mark when the timer finishes
+- Configurable duration (and every other setting for that matter!)
+
 ## Installing
 
 Use your [favorite plugin manager](https://vi.stackexchange.com/questions/613/how-do-i-install-a-plugin-in-vim-vi). For example, for [vim-plug](https://github.com/junegunn/vim-plug):
@@ -10,11 +21,15 @@ Use your [favorite plugin manager](https://vi.stackexchange.com/questions/613/ho
 Plug 'mkropat/vim-tt'
 ```
 
+__Pre-requisite__: To get status line support, you must also have [vim-airline][vim-airline] installed.
+
 ## API Reference
 
 ### Timer Management
 
 tt.vim exposes a single timer that counts down to 0 from however many minutes and seconds you set it to start at.
+
+<a href="https://commons.wikimedia.org/wiki/File:Lux_Products_Long_Ring_Timer.jpg"><img alt="photo of a desk timer" src="images/timer.jpg" width="300" /></a>
 
 | Function                    | Description                                                       |
 | --------------------------- | ----------------------------------------------------------------- |
@@ -196,3 +211,5 @@ I am not aware of an easy way to prevent this, while still allowing `tt#when_don
 ### What else?
 
 Were you surprised about something? Let us know by submitting a PR or an issue.
+
+[vim-airline]: https://github.com/vim-airline/vim-airline
