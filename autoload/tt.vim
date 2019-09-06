@@ -334,7 +334,14 @@ function! s:parse_duration(duration)
 
   let l:parts = split(a:duration, ":")
   if len(l:parts) == 1
-    let [l:minutes] = l:parts
+    let [l:val] = l:parts
+    if match(l:val, 's$') >= 0
+      let l:seconds = l:val
+    elseif match(l:val, 'h$') >= 0
+      let l:hours = l:val
+    else
+      let l:minutes = l:val
+    endif
   elseif len(l:parts) == 2
     let [l:minutes, l:seconds] = l:parts
   elseif len(parts) == 3
