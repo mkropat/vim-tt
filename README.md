@@ -1,6 +1,6 @@
 # tt.vim
 
-Task timer for Vim. Exposes the building blocks so you can implement your own task tracking method, whether that's Pomodoro or something of your own creation.
+Task timer for Vim. Exposes the building blocks so you can implement your own task tracking method, whether that is Pomodoro or something of your own creation.
 
 ![screenshot](images/screenshot.png)
 
@@ -12,6 +12,18 @@ Features at a glance:
 - Integrates with your existing task list
 - Can auto-append a progress mark when the timer finishes
 - Configurable duration (and every other setting for that matter!)
+
+###  Why Vim?
+
+There are dozens of more polished timers out there. Many accessible via a website so you don't even have to install anything. Why try to shoehorn one into your text editor??
+
+Short answer: the task list.
+
+One aspect of the Pomodoro Technique is writing down the tasks you want to work on and then adding a checkmark each time you complete a work interval for a given task. Now… many people who use the Pomodoro Technique don't worry about task lists and checkmarks. That is perfectly fine IMO. If that describes you, then you probably won't get much mileage out of tt.vim.
+
+However, if you do like to keep a task list—and you have heard the gospel of Vim—then the idea of being able to maintain your task list using the best *modal* editor on the planet might appeal to you. Doubly so if you are already working in Vim all the time.
+
+Building a task timer in Vim offers one other big advantage—scriptability. It is easy to adopt a "productivity" method and stick with it for a few days. But making it work for you over the long term? The only time I ever make it work is when I adapt the system to my circumstances and needs. tt.vim tries to make it possible for you to do that.
 
 ## Installing
 
