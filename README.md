@@ -50,7 +50,7 @@ See [defaults](#defaults) for usage details.
 
 tt.vim exposes a single timer that counts down to 0 from however many minutes and seconds you set it to start at.
 
-<a href="https://commons.wikimedia.org/wiki/File:Lux_Products_Long_Ring_Timer.jpg"><img alt="photo of a desk timer" src="images/timer.jpg" width="300" /></a>
+<img alt="photo of a desk timer" src="images/timer.jpg" width="300" />
 
 | Function                    | Description                                                       |
 | --------------------------- | ----------------------------------------------------------------- |
@@ -234,3 +234,8 @@ I am not aware of an easy way to prevent this, while still allowing `tt#when_don
 Were you surprised about something? Let us know by submitting a PR or an issue.
 
 [vim-airline]: https://github.com/vim-airline/vim-airline
+
+## Credits
+
+- [Bell sound](http://soundbible.com/1531-Temple-Bell.html) is by Mike Koenig ([license](https://creativecommons.org/licenses/by/3.0/))
+- [Timer photo](https://commons.wikimedia.org/wiki/File:Lux_Products_Long_Ring_Timer.jpg) is by Dennis Murphy (public domain)
